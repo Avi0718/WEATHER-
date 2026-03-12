@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Weather Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink: #0d0d0d;
+      --paper: #f5f0e8;
+      --warm: #e8e0d0;
+      --accent-sun: #f4a227;
+      --accent-cloud: #6b9ab8;
+      --accent-rain: #3d6b8f;
+      --border: #0d0d0d;
+      --shadow: 4px 4px 0px #0d0d0d;
+    }
+
+    body {
+      font-family: 'DM Mono', monospace;
+      background-color: var(--paper);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(13,13,13,0.04) 40px, rgba(13,13,13,0.04) 41px),
+        repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(13,13,13,0.04) 40px, rgba(13,13,13,0.04) 41px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 980px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 2.5rem;
+      border-bottom: 3px solid var(--border);
+      padding-bottom: 1rem;
+      animation: fadeDown 0.6s ease both;
+    }
+
+    .brand {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      letter-spacing: -2px;
+      line-height: 1;
+    }
+
+    .brand span {
+      display: inline-block;
+      background: var(--ink);
+      color: var(--paper);
+      padding: 0 8px;
+      margin-left: 6px;
+      transform: rotate(-1deg);
+    }
+
+    .date-block {
+      text-align: right;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.6;
+      line-height: 1.6;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--warm);
+      border: 2.5px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 1.6rem 1.6rem 1.8rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      animation: fadeUp 0.7s ease both;
+    }
+
+    .card:nth-child(1) { animation-delay: 0.1s; }
+    .card:nth-child(2) { animation-delay: 0.22s; }
+    .card:nth-child(3) { animation-delay: 0.34s; }
+
+    .card:hover {
+      transform: translate(-3px, -3px);
+      box-shadow: 7px 7px 0px var(--border);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 5px;
+      background: var(--card-accent, var(--accent-sun));
+    }
+
+    .card::after {
+      content: var(--card-symbol, '☀');
+      position: absolute;
+      bottom: -12px; right: 8px;
+      font-size: 7rem;
+      opacity: 0.06;
+      line-height: 1;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .card:hover::after { opacity: 0.1; }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.2rem;
+    }
+
+    .city-name {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.55rem;
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+    }
+
+    .city-country {
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      opacity: 0.5;
+      margin-top: 3px;
+    }
+
+    .condition-badge {
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 500;
+      border: 1.5px solid var(--card-accent, var(--accent-sun));
+      color: var(--card-accent, var(--accent-sun));
+      padding: 3px 8px;
+      white-space: nowrap;
+    }
+
+    .temp-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5rem;
+      margin-bottom: 1.4rem;
+    }
+
+    .temp-main {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(3.5rem, 8vw, 5rem);
+      line-height: 1;
+      letter-spacing: -4px;
+    }
+
+    .temp-unit {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 400;
+      opacity: 0.45;
+      margin-bottom: 8px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0;
+      border: 1.5px solid var(--border);
+    }
+
+    .stat {
+      padding: 0.65rem 0.6rem;
+      border-right: 1.5px solid var(--border);
+    }
+
+    .stat:last-child { border-right: none; }
+
+    .stat-label {
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      opacity: 0.45;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .hl-strip {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1.5px dashed rgba(13,13,13,0.2);
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .hl-strip span { opacity: 0.55; }
+    .hl-strip strong { opacity: 1; margin-left: 4px; }
+
+    .forecast {
+      margin-top: 1rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 4px;
+    }
+
+    .fc-day {
+      flex: 1;
+      text-align: center;
+      background: rgba(13,13,13,0.04);
+      border: 1px solid rgba(13,13,13,0.1);
+      padding: 0.4rem 0.2rem;
+      transition: background 0.15s;
+    }
+
+    .fc-day:hover { background: rgba(13,13,13,0.09); }
+
+    .fc-label {
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      opacity: 0.45;
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .fc-icon { font-size: 1rem; display: block; margin-bottom: 2px; }
+
+    .fc-temp {
+      font-size: 0.65rem;
+      font-weight: 500;
+    }
+
+    footer {
+      margin-top: 2.5rem;
+      font-size: 0.62rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      opacity: 0.35;
+      text-align: center;
+      animation: fadeUp 0.8s 0.5s ease both;
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(22px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-sunny  { --card-accent: var(--accent-sun);   --card-symbol: '☀'; }
+    .card-cloudy { --card-accent: var(--accent-cloud); --card-symbol: '☁'; }
+    .card-rainy  { --card-accent: var(--accent-rain);  --card-symbol: '🌧'; }
+
+    @media (max-width: 640px) {
+      .date-block { display: none; }
+      .brand { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="brand">
+      WEATHER<span>NOW</span>
+    </div>
+    <div class="date-block">
+      Static snapshot<br>
+      Thursday, 12 March 2026<br>
+      Local time display
+    </div>
+  </header>
+
+  <div class="cards">
+
+    <!-- Tokyo -->
+    <div class="card card-sunny">
+      <div class="card-top">
+        <div>
+          <div class="city-name">Tokyo</div>
+          <div class="city-country">Japan &mdash; JST UTC+9</div>
+        </div>
+        <div class="condition-badge">Sunny</div>
+      </div>
+      <div class="temp-row">
+        <div class="temp-main">18</div>
+        <div class="temp-unit">°C</div>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">Humidity</span>
+          <span class="stat-value">52%</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Wind</span>
+          <span class="stat-value">14 km/h</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">UV Index</span>
+          <span class="stat-value">4 — Mod</span>
+        </div>
+      </div>
+      <div class="hl-strip">
+        <div><span>↑ High</span> <strong>21°C</strong></div>
+        <div><span>↓ Low</span> <strong>12°C</strong></div>
+        <div><span>Feels</span> <strong>17°C</strong></div>
+      </div>
+      <div class="forecast">
+        <div class="fc-day"><span class="fc-label">Fri</span><span class="fc-icon">☀️</span><span class="fc-temp">20°</span></div>
+        <div class="fc-day"><span class="fc-label">Sat</span><span class="fc-icon">⛅</span><span class="fc-temp">17°</span></div>
+        <div class="fc-day"><span class="fc-label">Sun</span><span class="fc-icon">🌧</span><span class="fc-temp">14°</span></div>
+        <div class="fc-day"><span class="fc-label">Mon</span><span class="fc-icon">☀️</span><span class="fc-temp">19°</span></div>
+      </div>
+    </div>
+
+    <!-- London -->
+    <div class="card card-cloudy">
+      <div class="card-top">
+        <div>
+          <div class="city-name">London</div>
+          <div class="city-country">United Kingdom &mdash; GMT</div>
+        </div>
+        <div class="condition-badge">Overcast</div>
+      </div>
+      <div class="temp-row">
+        <div class="temp-main">9</div>
+        <div class="temp-unit">°C</div>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">Humidity</span>
+          <span class="stat-value">78%</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Wind</span>
+          <span class="stat-value">22 km/h</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">UV Index</span>
+          <span class="stat-value">1 — Low</span>
+        </div>
+      </div>
+      <div class="hl-strip">
+        <div><span>↑ High</span> <strong>11°C</strong></div>
+        <div><span>↓ Low</span> <strong>5°C</strong></div>
+        <div><span>Feels</span> <strong>6°C</strong></div>
+      </div>
+      <div class="forecast">
+        <div class="fc-day"><span class="fc-label">Fri</span><span class="fc-icon">🌧</span><span class="fc-temp">8°</span></div>
+        <div class="fc-day"><span class="fc-label">Sat</span><span class="fc-icon">🌧</span><span class="fc-temp">7°</span></div>
+        <div class="fc-day"><span class="fc-label">Sun</span><span class="fc-icon">⛅</span><span class="fc-temp">10°</span></div>
+        <div class="fc-day"><span class="fc-label">Mon</span><span class="fc-icon">☀️</span><span class="fc-temp">13°</span></div>
+      </div>
+    </div>
+
+    <!-- New York -->
+    <div class="card card-rainy">
+      <div class="card-top">
+        <div>
+          <div class="city-name">New York</div>
+          <div class="city-country">United States &mdash; EST UTC-5</div>
+        </div>
+        <div class="condition-badge">Rainy</div>
+      </div>
+      <div class="temp-row">
+        <div class="temp-main">5</div>
+        <div class="temp-unit">°C</div>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">Humidity</span>
+          <span class="stat-value">88%</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Wind</span>
+          <span class="stat-value">31 km/h</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">UV Index</span>
+          <span class="stat-value">0 — None</span>
+        </div>
+      </div>
+      <div class="hl-strip">
+        <div><span>↑ High</span> <strong>7°C</strong></div>
+        <div><span>↓ Low</span> <strong>1°C</strong></div>
+        <div><span>Feels</span> <strong>1°C</strong></div>
+      </div>
+      <div class="forecast">
+        <div class="fc-day"><span class="fc-label">Fri</span><span class="fc-icon">🌧</span><span class="fc-temp">6°</span></div>
+        <div class="fc-day"><span class="fc-label">Sat</span><span class="fc-icon">⛅</span><span class="fc-temp">9°</span></div>
+        <div class="fc-day"><span class="fc-label">Sun</span><span class="fc-icon">☀️</span><span class="fc-temp">12°</span></div>
+        <div class="fc-day"><span class="fc-label">Mon</span><span class="fc-icon">⛅</span><span class="fc-temp">10°</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>Static data &mdash; no API &mdash; snapshot: 12 Mar 2026 &mdash; WeatherNow Panel v1.0</footer>
+</div>
+</body>
+</html>
